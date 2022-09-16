@@ -24,6 +24,7 @@ export interface EditorProps {
 
 interface EditorState {
     curNodeId?: string;
+    blockNodeSelectChange?: boolean;
 }
 
 export default class Editor extends React.Component<EditorProps, EditorState> {
@@ -137,7 +138,7 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         });
 
         graph.on("nodeselectchange", (e: G6GraphEvent) => {
-            if (this.nodePanelRef.current && this.nodePanelRef.current.blockNodeSelectChange) {
+            if (this.state.blockNodeSelectChange) {
                 // ** 重置选中效果
                 this.onSelectNode(this.state.curNodeId)
                 return;
@@ -488,8 +489,12 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         return (
             <div className="editor">
                 <Row className="editorBd">
-                    <Col span={18} className="editorContent" ref={this.ref} />
-                    <Col span={6} className="editorSidebar">
+                    <Col span={18} className="editorContent" ref={this.ref} onMouseDownCapture={(event) => {
+                        this.state.blockNodeSelectChange = false;
+                    }} />
+                    <Col span={6} className="editorSidebar" onMouseDownCapture={(event) => {
+                        this.state.blockNodeSelectChange = true;
+                    }}>
                         {curNode ? (
                             <NodePanel
                                 ref={this.nodePanelRef}
