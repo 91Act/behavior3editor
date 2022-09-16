@@ -251,7 +251,7 @@ export default class NodePanel extends React.Component<NodePanelProps> {
                 {conf &&
                     conf.args &&
                     conf.args.map((e, i: number) => {
-                        const required = e.type.indexOf("?") == -1;
+                        const required = e.type.indexOf("boolean") == -1 && e.type.indexOf("?") == -1;
                         return (
                             <Item
                                 initialValue={e.default}
