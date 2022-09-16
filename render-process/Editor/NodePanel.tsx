@@ -20,6 +20,7 @@ import {
 import Settings from "../../main-process/Settings";
 import { FormInstance } from "antd/lib/form";
 import Markdown from "react-markdown";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 const { Item } = Form;
 const { Option } = Select;
@@ -224,7 +225,7 @@ export default class NodePanel extends React.Component<NodePanelProps> {
             } else if (e.type.indexOf("lua") >= 0) {
                 return <Input onBlur={this.handleSubmit} onMouseDown={this.onBlockNodeSelectChange} placeholder={"公式"} />;
             } else if (e.type.indexOf("enum") >= 0) {
-                return <Select style={{ width: 120 }} onChange={this.handleSubmit} >
+                return <Select style={{ width: "100%" }} onChange={this.handleSubmit} >
                     {
                         e.options.map((e) => {
                             return (<Option key={e.name} value={e.value}>{e.name}</Option>)
@@ -237,8 +238,8 @@ export default class NodePanel extends React.Component<NodePanelProps> {
         // 自定义参数
         const customArgs = () => {
             return (
-                <Item name="customArgs" label="自定义" key="customArgs">
-                    <Input.TextArea onBlur={this.handleSubmit} onMouseDown={this.onBlockNodeSelectChange} style={{ minHeight: 100 }} />
+                <Item name="customArgs" label="最终输出" key="customArgs">
+                    <Input.TextArea onBlur={this.handleSubmit} onMouseDown={this.onBlockNodeSelectChange} style={{ minHeight: 100 }} disabled={true} />
                 </Item>
             );
         };
@@ -256,8 +257,13 @@ export default class NodePanel extends React.Component<NodePanelProps> {
                             <Item
                                 initialValue={e.default}
                                 name={`args.${e.name}`}
-                                label={e.desc}
+                                label={e.name}
                                 key={`args.${e.name}`}
+                                tooltip={{
+                                    title: e.desc, icon: <InfoCircleOutlined />, getPopupContainer: () => {
+                                        return document.getElementsByClassName("ant-layout-content content")[0]
+                                    }
+                                }}
                                 valuePropName={
                                     e.type.indexOf("boolean") >= 0 ? "checked" : undefined
                                 }

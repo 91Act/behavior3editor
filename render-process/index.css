@@ -44,7 +44,7 @@ body {
   display: flex;
   /* background-color: #242424; */
   background-color: rgb(20, 20, 20);
-
+  white-space: pre-line;
 }
 
 .tabs {
