@@ -25,7 +25,7 @@ module.exports = {
       {
         test: /\.less$/,
         include: /node_modules/,
-        loaders: ['style-loader','css-loader','less-loader']
+        loaders: ['style-loader', 'css-loader', 'less-loader']
       },
       {
         test: /\.css$/,
@@ -37,7 +37,7 @@ module.exports = {
           aliasFields: ['main']
         }
       },
-     
+
     ]
   },
 
@@ -47,6 +47,7 @@ module.exports = {
   target: "electron-renderer",
 
   externals: [{
-    'electron-reload': 'require("electron-reload")'
+    'electron-reload': 'require("electron-reload")',
+    'ws': 'require("ws")'
   }]
 };
