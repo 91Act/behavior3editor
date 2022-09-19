@@ -9,18 +9,19 @@ import {
     Switch,
     InputNumber,
     notification,
-    message,
 } from "antd";
 import { INode } from "@antv/g6/lib/interface/item";
 import {
     BehaviorNodeModel,
     BehaviorNodeTypeModel,
     ArgsDefType,
+    BevTreeExecuteStatus,
 } from "../../common/BehaviorTreeModel";
 import Settings from "../../main-process/Settings";
 import { FormInstance } from "antd/lib/form";
 import Markdown from "react-markdown";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { message } from 'antd';
 
 const { Item } = Form;
 const { Option } = Select;
@@ -32,11 +33,18 @@ interface NodePanelProps {
     pushUndoStack: () => void;
 }
 
-interface NodePanelState { }
+interface NodePanelState {
+    message: string,
+    mouseInForm: boolean
+}
 
-export default class NodePanel extends React.Component<NodePanelProps> {
+export default class NodePanel extends React.Component<NodePanelProps, NodePanelState> {
     formRef = React.createRef<FormInstance>();
-
+    debugInfoRef = React.createRef<any>();
+    state: NodePanelState = {
+        message: "无数据",
+        mouseInForm: false,
+    };
     componentDidUpdate() {
         this.formRef.current.resetFields();
         this.formRef.current.setFieldsValue(this.getInitialValues());
@@ -167,6 +175,14 @@ export default class NodePanel extends React.Component<NodePanelProps> {
                     onFinish={this.onFinish}
                     initialValues={this.getInitialValues()}
                     ref={this.formRef}
+                    onMouseEnter={() => {
+                        this.setState({ message: "停止接收数据" })
+                        this.state.mouseInForm = true
+                    }}
+                    onMouseLeave={() => {
+                        this.setState({ message: "无数据" })
+                        this.state.mouseInForm = false
+                    }}
                 >
                     <Item label="节点id">
                         <Input value={model.id} disabled={true} />
@@ -186,18 +202,43 @@ export default class NodePanel extends React.Component<NodePanelProps> {
                     <Item label="节点说明" name="desc">
                         <Input onBlur={this.handleSubmit} />
                     </Item>
-                    <Item label="调试开关" name="debug" valuePropName="checked">
+                    {/* <Item label="调试时显示节点状态改变" name="debug" valuePropName="checked">
                         <Switch onChange={this.handleSubmit} />
-                    </Item>
+                    </Item> */}
                     <Markdown source={conf.doc} />
                     {this.renderInputs(conf)}
                     {this.renderArgs(conf)}
                     {this.renderOutputs(conf)}
                 </Form>
+                {this.renderDebug(conf)}
             </Card>
         );
     }
-
+    refreshDebugInfo() {
+        if (this.state.mouseInForm) {
+            return;
+        }
+        let frameRecordInfo = this.props.model.frameRecordInfo
+        if (frameRecordInfo == null) {
+            this.setState({ message: "无数据" })
+        }
+        else {
+            this.setState({
+                message:
+                    `全局 tick 序号：${frameRecordInfo.counter}\n详细信息：\n${frameRecordInfo.content}\n返回状态：${BevTreeExecuteStatus[frameRecordInfo.state]}`
+            })
+        }
+    }
+    renderDebug(conf: BehaviorNodeTypeModel) {
+        return (<div ref={this.debugInfoRef}>
+            <Divider orientation="left">
+                <h3>调试信息</h3>
+            </Divider>
+            <label className="displayLinebreak">
+                {this.state.message}
+            </label>
+        </div>)
+    }
     renderArgs(conf: BehaviorNodeTypeModel) {
         if (!conf || !conf.args || conf.args.length == 0) {
             return null;

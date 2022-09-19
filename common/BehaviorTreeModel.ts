@@ -1,8 +1,8 @@
 import { TreeGraphData } from "@antv/g6/lib/types";
 
-export interface ArgsOptional{
-    name:string;
-    value:string|number;
+export interface ArgsOptional {
+    name: string;
+    value: string | number;
 }
 
 export interface ArgsDefType {
@@ -31,6 +31,23 @@ export interface BehaviorNodeModel {
     output?: string[];
     children?: BehaviorNodeModel[];
     debug?: boolean;
+    frameRecordInfo?: AIRecordInfo;
+}
+
+// ** 这里需要与 BBWGProject\assets\Scripts\GamePlay\AI\Behavior3\constants.ts:30 的定义对齐
+export enum BevTreeExecuteStatus {
+    ExecuteStatus_Failed = 0,
+    ExecuteStatus_Finished = 1,
+    ExecuteStatus_Executing = 2,
+    ExecuteStatus_Break = 3,
+    ExecuteStatus_Error = 4,
+}
+export interface AIRecordInfo {
+    counter: number
+    nodeId: number
+    nodePath: string
+    content: string
+    state: BevTreeExecuteStatus
 }
 
 export interface BehaviorTreeModel {

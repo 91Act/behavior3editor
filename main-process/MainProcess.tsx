@@ -69,7 +69,6 @@ export class MainProcess {
         this.createAIDebugServer()
     }
 
-    HTPP_PORT_LISTEN: number = 8080
     createAIDebugServer() {
 
         this.mainWindow.webContents.once("did-finish-load", () => {
@@ -81,9 +80,14 @@ export class MainProcess {
             wss.on("connection", (ws: WebSocket) => {
                 //connection is up, let's add a simple simple event
                 ws.on("message", (message: string) => {
+                    if (this.mainWindow.isDestroyed() || this.mainWindow.webContents.isDestroyed()) {
+                        return;
+                    }
                     //log the received message and send it back to the client
-                    console.log("received: %s", message);
-                    ws.send(`Hello, you sent -> ${message}`);
+                    let jsonContent = JSON.parse(message)
+                    // console.log("received: %s", json_content);
+                    this.mainWindow.webContents.send(MainEventType.SEND_DEBUG_INFO, jsonContent["name"], jsonContent["frameDebugInfo"]);
+                    // ws.send(`Hello, you sent -> ${message}`);
                 });
 
                 //send immediatly a feedback to the incoming connection

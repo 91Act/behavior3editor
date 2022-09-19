@@ -12,4 +12,5 @@ export default {
     SAVE: "SAVE",
     UNDO: "UNDO",
     REDO: "REDO",
+    SEND_DEBUG_INFO: "SEND_DEBUG_INFO",
 };

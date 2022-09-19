@@ -10,6 +10,8 @@ import {
     BehaviorTreeModel,
     GraphNodeModel,
     BehaviorNodeModel,
+    AIRecordInfo,
+    BevTreeExecuteStatus,
 } from "../../common/BehaviorTreeModel";
 import TreePanel from "./TreePanel";
 import Settings from "../../main-process/Settings";
@@ -91,6 +93,22 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
                     },
                 ],
             },
+            // nodeStateStyles: {
+            //     ExecuteStatus_Failed: {
+            //         // The node style when it is on the its failed state is true
+            //         stroke: 'red',
+            //         fill: 'red',
+            //     },
+            //     ExecuteStatus_Finished: {
+            //         // The node style when it is on the its finished state is true
+            //         stroke: 'green',
+            //         fill: 'green',
+            //     },
+            //     ExecuteStatus_Executing: {
+            //         stroke: 'blue',
+            //         fill: 'blue'
+            //     }
+            // },
             defaultEdge: {
                 type: "cubic-horizontal",
                 style: {
@@ -534,5 +552,41 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
                 </Row>
             </div>
         );
+    }
+
+    parseDebugInfo(frameDebugInfo: AIRecordInfo[]) {
+        let nodes = this.graph.getNodes()
+        // const allStates: any[] = [];
+        // Object.values(BevTreeExecuteStatus).forEach(item => {
+        //     if (typeof (item) === "string") {
+        //         allStates.push(item)
+        //     }
+        // })
+        nodes.forEach((node) => {
+            let data: any = this.graph.findDataById(node.getID());
+            data["frameRecordInfo"] = null;
+            if (node.getID() == this.state.curNodeId) {
+                this.nodePanelRef.current.refreshDebugInfo()
+            }
+        })
+        // console.log(frameDebugInfo)
+        frameDebugInfo.forEach((value) => {
+            let id = value.nodeId.toString();
+            let data: any = this.graph.findDataById(id);
+            data["frameRecordInfo"] = value;
+            if (id == this.state.curNodeId) {
+                this.nodePanelRef.current.refreshDebugInfo()
+            }
+            else {
+                if (value.state == null) {
+                    console.warn(`Please check ${JSON.stringify(value)} record state.`)
+                    return;
+                }
+                // console.log(BevTreeExecuteStatus[value.state])
+                // this.graph.setItemState(id, BevTreeExecuteStatus[value.state], true);
+                // this.graph.refreshItem(id);
+            }
+        })
+        // this.graph.refresh();
     }
 }
