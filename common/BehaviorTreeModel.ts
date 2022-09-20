@@ -50,6 +50,14 @@ export interface AIRecordInfo {
     state: BevTreeExecuteStatus
 }
 
+export class AIHotReloadInfo {
+    nodeId: number
+    nodeType: string
+    args: any
+}
+// ** 上面的内容需要与 BBWGProject\assets\Scripts\GamePlay\AI\Behavior3\constants.ts:30 的定义对齐
+
+
 export interface BehaviorTreeModel {
     name: string;
     desc?: string;

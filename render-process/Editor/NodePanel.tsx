@@ -16,18 +16,23 @@ import {
     BehaviorNodeTypeModel,
     ArgsDefType,
     BevTreeExecuteStatus,
+    BehaviorTreeModel,
+    AIHotReloadInfo,
 } from "../../common/BehaviorTreeModel";
 import Settings from "../../main-process/Settings";
 import { FormInstance } from "antd/lib/form";
 import Markdown from "react-markdown";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { message } from 'antd';
+import MainEventType from "../../common/MainEventType";
+import { ipcRenderer } from "electron";
 
 const { Item } = Form;
 const { Option } = Select;
 
 interface NodePanelProps {
     model: BehaviorNodeModel;
+    treeModel: BehaviorTreeModel;
     settings: Settings;
     updateNode: (id: string, forceUpdate: boolean) => void;
     pushUndoStack: () => void;
@@ -35,7 +40,7 @@ interface NodePanelProps {
 
 interface NodePanelState {
     message: string,
-    mouseInForm: boolean
+    isMouseInForm: boolean
 }
 
 export default class NodePanel extends React.Component<NodePanelProps, NodePanelState> {
@@ -43,7 +48,7 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
     debugInfoRef = React.createRef<any>();
     state: NodePanelState = {
         message: "无数据",
-        mouseInForm: false,
+        isMouseInForm: false,
     };
     componentDidUpdate() {
         this.formRef.current.resetFields();
@@ -78,7 +83,7 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
 
     onFinish = (values: any) => {
         console.log("Success:", values);
-        const { updateNode, pushUndoStack, model, settings } = this.props;
+        const { updateNode, pushUndoStack, model, settings, treeModel } = this.props;
         const conf = settings.getNodeConf(values.name);
         if (!conf) {
             notification.warn({ message: `节点${values.name}未定义` });
@@ -142,6 +147,13 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
             this.forceUpdate();
         }
         updateNode(model.id.toString(), forceUpdate);
+        let hotReloadInfo: AIHotReloadInfo = {
+            // ** TODO：不知道为啥这个 model.id 是字符串类型的
+            nodeId: Number(model.id),
+            nodeType: model.name,
+            args: args
+        }
+        ipcRenderer.send(`AI_PROP_CHANGED_${treeModel.name}`, hotReloadInfo);
     };
 
     onFinishFailed = (errorInfo: any) => {
@@ -177,11 +189,11 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
                     ref={this.formRef}
                     onMouseEnter={() => {
                         this.setState({ message: "停止接收数据" })
-                        this.state.mouseInForm = true
+                        this.state.isMouseInForm = true
                     }}
                     onMouseLeave={() => {
                         this.setState({ message: "无数据" })
-                        this.state.mouseInForm = false
+                        this.state.isMouseInForm = false
                     }}
                 >
                     <Item label="节点id">
@@ -215,7 +227,7 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
         );
     }
     refreshDebugInfo() {
-        if (this.state.mouseInForm) {
+        if (this.state.isMouseInForm) {
             return;
         }
         let frameRecordInfo = this.props.model.frameRecordInfo
@@ -288,7 +300,7 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
                             <Item
                                 initialValue={e.default}
                                 name={`args.${e.name}`}
-                                label={e.name}
+                                label={e.name.substring(0, 10)}
                                 key={`args.${e.name}`}
                                 tooltip={{
                                     title: e.desc, icon: <InfoCircleOutlined />, getPopupContainer: () => {

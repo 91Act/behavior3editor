@@ -1,10 +1,11 @@
-import { app, BrowserWindow, Menu, MenuItem, dialog, nativeTheme } from "electron";
+import { app, BrowserWindow, Menu, MenuItem, dialog, nativeTheme, ipcMain } from "electron";
 import AppMenu from "./AppMenu";
 import Settings from "./Settings";
 import MainEventType from "../common/MainEventType";
 import electronLocalshortcut from "electron-localshortcut";
 import http from "http";
 import * as WebSocket from "ws";
+import { AIHotReloadInfo, BehaviorTreeModel } from "../common/BehaviorTreeModel";
 
 // 一些暴露给render-process的全局变量
 export interface Global {
@@ -16,6 +17,7 @@ export class MainProcess {
     mainWindow: BrowserWindow;
     appMenu: AppMenu;
     settings: Settings;
+    listeners: string[]
     constructor() {
         nativeTheme.themeSource = "dark";
         app.on("ready", () => {
@@ -42,6 +44,7 @@ export class MainProcess {
     createWindow() {
         this.settings = new Settings();
         global.settings = this.settings;
+        this.listeners = [];
 
         this.mainWindow = new BrowserWindow({
             width: 1280,
@@ -78,6 +81,14 @@ export class MainProcess {
             const wss = new WebSocket.Server({ server });
 
             wss.on("connection", (ws: WebSocket) => {
+                let hotReloadCallback = (event: any, hotReloadInfo: AIHotReloadInfo) => {
+                    (hotReloadInfo as any)["typeof"] = "AIHotReloadInfo"
+                    ws.send(JSON.stringify(hotReloadInfo))
+                }
+                let rebuildTreeCallback = (event: any, treeModel: BehaviorTreeModel) => {
+                    (treeModel as any)["typeof"] = "BehaviorTreeModel"
+                    ws.send(JSON.stringify(treeModel))
+                }
                 //connection is up, let's add a simple simple event
                 ws.on("message", (message: string) => {
                     if (this.mainWindow.isDestroyed() || this.mainWindow.webContents.isDestroyed()) {
@@ -87,11 +98,31 @@ export class MainProcess {
                     let jsonContent = JSON.parse(message)
                     // console.log("received: %s", json_content);
                     this.mainWindow.webContents.send(MainEventType.SEND_DEBUG_INFO, jsonContent["name"], jsonContent["frameDebugInfo"]);
+                    let hotReloadName = `AI_PROP_CHANGED_${jsonContent["name"]}`
+                    if (this.listeners.indexOf(hotReloadName) == -1) {
+                        this.listeners.push(hotReloadName)
+                        ipcMain.on(hotReloadName, hotReloadCallback)
+                    }
+                    let rebuildName = `AI_REBUILD_${jsonContent["name"]}`
+                    if (this.listeners.indexOf(rebuildName) == -1) {
+                        this.listeners.push(rebuildName)
+                        ipcMain.on(rebuildName, rebuildTreeCallback)
+                    }
                     // ws.send(`Hello, you sent -> ${message}`);
                 });
+                ws.on("close", () => {
+                    if (this.mainWindow.isDestroyed() || this.mainWindow.webContents.isDestroyed()) {
+                        return;
+                    }
+                    this.listeners.forEach((listenerName) => {
+                        ipcMain.removeListener(listenerName, hotReloadCallback)
+                    });
+                    this.listeners.length = 0;
+                })
+
 
                 //send immediatly a feedback to the incoming connection
-                ws.send("Hi there, I am a WebSocket server");
+                // ws.send("Hi there, I am a WebSocket server");
             });
 
             //start our server

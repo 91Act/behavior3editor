@@ -17,7 +17,8 @@ import TreePanel from "./TreePanel";
 import Settings from "../../main-process/Settings";
 
 import "./Editor.css";
-import { clipboard } from "electron";
+import { clipboard, ipcRenderer } from "electron";
+import { Item, Matrix } from "@antv/g6/lib/types";
 
 export interface EditorProps {
     filepath: string;
@@ -27,6 +28,7 @@ export interface EditorProps {
 interface EditorState {
     curNodeId?: string;
     blockNodeSelectChange?: boolean;
+    lastMatrix?: Matrix
 }
 
 export default class Editor extends React.Component<EditorProps, EditorState> {
@@ -36,7 +38,6 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
     private graph: TreeGraph;
     private dragSrcId: string;
     private dragDstId: string;
-    private autoId: number;
     private undoStack: BehaviorNodeModel[] = [];
     private redoStack: BehaviorNodeModel[] = [];
     private treeModel: BehaviorTreeModel;
@@ -54,7 +55,7 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         const str = fs.readFileSync(this.props.filepath, "utf8");
         this.treeModel = JSON.parse(str);
         this.data = Utils.createTreeData(this.treeModel.root, this.settings);
-        this.autoId = Utils.refreshNodeId(this.data);
+        Utils.refreshNodeId(this.data);
     }
 
     shouldComponentUpdate(nextProps: EditorProps, nextState: EditorState) {
@@ -135,6 +136,11 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
             },
         });
 
+        graph.on("viewportchange", (data: any) => {
+            if (data.action == 'translate' || data.action == 'zoom') {
+                this.state.lastMatrix = data.matrix
+            }
+        })
         graph.on("contextmenu", (e: G6GraphEvent) => {
             require("@electron/remote").Menu.getApplicationMenu().popup();
         });
@@ -292,7 +298,7 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
             } else {
                 return;
             }
-
+            this.reorderNodeId()
             // console.log("cur data", graph.findDataById('1'));
             this.changeWithoutAnim();
         });
@@ -317,6 +323,8 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         this.setState({ curNodeId });
         if (this.state.curNodeId) {
             graph.setItemState(this.state.curNodeId, "selected", true);
+            // let model = graph.findById(this.state.curNodeId).getModel()
+            // console.log(`this.state.curNodeId : (${model.x},${model.y})`)
         }
     }
 
@@ -329,14 +337,16 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         }
         this.pushUndoStack();
         const curNodeData = this.graph.findDataById(curNodeId);
-        const newNodeData: BehaviorNodeModel = {
-            id: this.autoId++,
-            name: name,
-        };
         if (!curNodeData.children) {
             curNodeData.children = [];
         }
-        curNodeData.children.push(Utils.createTreeData(newNodeData, this.settings));
+        let newNodeData: BehaviorNodeModel = {
+            id: -1,
+            name: name,
+        };
+        let newNode = Utils.createTreeData(newNodeData, this.settings)
+        curNodeData.children.push(newNode);
+        this.reorderNodeId()
         this.changeWithoutAnim();
     }
 
@@ -360,14 +370,23 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         this.changeWithoutAnim();
     }
 
+    restoreViewport() {
+        if (this.state.lastMatrix) {
+            this.graph.getGroup().setMatrix(this.state.lastMatrix);
+            let treeModel = this.getTreeModel()
+            ipcRenderer.send(`AI_REBUILD_${treeModel.name}`, treeModel);
+        }
+    }
+
     changeWithoutAnim() {
         this.graph.set("animate", false);
-        this.graph.changeData();
+        this.graph.changeData(this.data);
         this.graph.layout();
         this.graph.set("animate", true);
 
         this.props.onChangeSaveState(true);
         this.unsave = true;
+        this.restoreViewport()
     }
 
     save() {
@@ -376,7 +395,6 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         }
         const { filepath } = this.props;
         const data = this.graph.findDataById("1") as GraphNodeModel;
-        this.autoId = Utils.refreshNodeId(data);
         const root = Utils.createFileData(data);
         const treeModel = {
             name: path.basename(filepath).slice(0, -5),
@@ -393,14 +411,13 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         this.graph.set("animate", false);
         this.graph.changeData(Utils.createTreeData(root, this.settings));
         this.graph.layout();
-        this.graph.fitCenter();
         this.graph.set("animate", true);
+        this.restoreViewport()
     }
 
     getTreeModel() {
         const { filepath } = this.props;
         const data = this.graph.findDataById("1") as GraphNodeModel;
-        this.autoId = Utils.refreshNodeId(data);
         const root = Utils.createFileData(data);
         return {
             name: path.basename(filepath).slice(0, -5),
@@ -419,6 +436,10 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         clipboard.writeText(JSON.stringify(Utils.cloneNodeData(data), null, 2));
     }
 
+    reorderNodeId() {
+        let data = this.graph.findDataById("1") as GraphNodeModel
+        Utils.refreshNodeId(data)
+    }
     pasteNode() {
         const { curNodeId } = this.state;
         if (!curNodeId) {
@@ -433,12 +454,12 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
             }
             this.pushUndoStack();
             const data = Utils.createTreeData(JSON.parse(str), this.settings);
-            this.autoId = Utils.refreshNodeId(data, this.autoId);
             this.onSelectNode(null);
             if (!curNodeData.children) {
                 curNodeData.children = [];
             }
             curNodeData.children.push(data);
+            this.reorderNodeId()
             // this.autoId = Utils.refreshNodeId(this.graph.findDataById("1") as GraphNodeModel);
             this.changeWithoutAnim();
         } catch (error) {
@@ -451,11 +472,11 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         this.graph.set("animate", false);
         this.graph.changeData(Utils.createTreeData(data, this.settings));
         this.graph.layout();
-        this.graph.fitCenter();
         this.graph.set("animate", true);
 
         this.props.onChangeSaveState(true);
         this.unsave = true;
+        this.restoreViewport()
     }
 
     pushUndoStack(keepRedo?: boolean) {
@@ -517,6 +538,7 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
                             <NodePanel
                                 ref={this.nodePanelRef}
                                 model={curNode}
+                                treeModel={this.treeModel}
                                 settings={this.settings}
                                 updateNode={(id, forceUpdate) => {
                                     if (forceUpdate) {
@@ -566,7 +588,9 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
             let data: any = this.graph.findDataById(node.getID());
             data["frameRecordInfo"] = null;
             if (node.getID() == this.state.curNodeId) {
-                this.nodePanelRef.current.refreshDebugInfo()
+                if (this.nodePanelRef.current) {
+                    this.nodePanelRef.current.refreshDebugInfo();
+                }
             }
         })
         // console.log(frameDebugInfo)
@@ -575,7 +599,9 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
             let data: any = this.graph.findDataById(id);
             data["frameRecordInfo"] = value;
             if (id == this.state.curNodeId) {
-                this.nodePanelRef.current.refreshDebugInfo()
+                if (this.nodePanelRef.current) {
+                    this.nodePanelRef.current.refreshDebugInfo();
+                }
             }
             else {
                 if (value.state == null) {
