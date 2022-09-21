@@ -30,3 +30,7 @@
 .displayLinebreak {
   white-space: pre-line;
 }
+
+.focusInForm {
+  background-color: rgba(30, 30, 30, 0.85);
+}

@@ -41,12 +41,14 @@ interface NodePanelProps {
 interface NodePanelState {
     message: string,
     isMouseInForm: boolean
+    inFormClassName: string
 }
 
 export default class NodePanel extends React.Component<NodePanelProps, NodePanelState> {
     formRef = React.createRef<FormInstance>();
     debugInfoRef = React.createRef<any>();
     state: NodePanelState = {
+        inFormClassName: "",
         message: "无数据",
         isMouseInForm: false,
     };
@@ -187,13 +189,18 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
                     onFinish={this.onFinish}
                     initialValues={this.getInitialValues()}
                     ref={this.formRef}
+                    className={this.state.inFormClassName}
                     onMouseEnter={() => {
-                        this.setState({ message: "停止接收数据" })
                         this.state.isMouseInForm = true
+                        this.setState({
+                            inFormClassName: "focusInForm"
+                        })
                     }}
                     onMouseLeave={() => {
-                        this.setState({ message: "无数据" })
                         this.state.isMouseInForm = false
+                        this.setState({
+                            inFormClassName: ""
+                        })
                     }}
                 >
                     <Item label="节点id">
@@ -201,6 +208,7 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
                     </Item>
                     <Item label="节点名称" name="name">
                         <AutoComplete
+                            disabled={true}
                             options={options}
                             onBlur={this.handleSubmit}
                             filterOption={(inputValue: string, option: any) => {
@@ -228,18 +236,20 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
     }
     refreshDebugInfo() {
         if (this.state.isMouseInForm) {
+            if (this.state.message !== "等待数据修改，已停止刷新调试信息") {
+                this.setState({ message: "等待数据修改，已停止刷新调试信息" })
+            }
             return;
         }
         let frameRecordInfo = this.props.model.frameRecordInfo
-        if (frameRecordInfo == null) {
-            this.setState({ message: "无数据" })
+        let content = ""
+        for (let i = 0; i < frameRecordInfo.length; ++i) {
+            let frameRecord = frameRecordInfo[i]
+            content += `全局 tick 序号：${frameRecord.counter}\n详细信息：\n${frameRecord.content}\n返回状态：${BevTreeExecuteStatus[frameRecord.state]}\n----------------\n`
         }
-        else {
-            this.setState({
-                message:
-                    `全局 tick 序号：${frameRecordInfo.counter}\n详细信息：\n${frameRecordInfo.content}\n返回状态：${BevTreeExecuteStatus[frameRecordInfo.state]}`
-            })
-        }
+        this.setState({
+            message: content
+        })
     }
     renderDebug(conf: BehaviorNodeTypeModel) {
         return (<div ref={this.debugInfoRef}>

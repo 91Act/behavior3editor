@@ -586,7 +586,9 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         // })
         nodes.forEach((node) => {
             let data: any = this.graph.findDataById(node.getID());
-            data["frameRecordInfo"] = null;
+            if (data["frameRecordInfo"] && data["frameRecordInfo"].length > 3) {
+                data["frameRecordInfo"].shift()
+            }
             if (node.getID() == this.state.curNodeId) {
                 if (this.nodePanelRef.current) {
                     this.nodePanelRef.current.refreshDebugInfo();
@@ -597,7 +599,12 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         frameDebugInfo.forEach((value) => {
             let id = value.nodeId.toString();
             let data: any = this.graph.findDataById(id);
-            data["frameRecordInfo"] = value;
+            if (data["frameRecordInfo"]) {
+                data["frameRecordInfo"].push(value)
+            }
+            else {
+                data["frameRecordInfo"] = [value];
+            }
             if (id == this.state.curNodeId) {
                 if (this.nodePanelRef.current) {
                     this.nodePanelRef.current.refreshDebugInfo();

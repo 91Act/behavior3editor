@@ -31,7 +31,7 @@ export interface BehaviorNodeModel {
     output?: string[];
     children?: BehaviorNodeModel[];
     debug?: boolean;
-    frameRecordInfo?: AIRecordInfo;
+    frameRecordInfo?: AIRecordInfo[];
 }
 
 // ** 这里需要与 BBWGProject\assets\Scripts\GamePlay\AI\Behavior3\constants.ts:30 的定义对齐
