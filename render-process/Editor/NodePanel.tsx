@@ -242,10 +242,13 @@ export default class NodePanel extends React.Component<NodePanelProps, NodePanel
             return;
         }
         let frameRecordInfo = this.props.model.frameRecordInfo
-        let content = ""
-        for (let i = 0; i < frameRecordInfo.length; ++i) {
-            let frameRecord = frameRecordInfo[i]
-            content += `全局 tick 序号：${frameRecord.counter}\n详细信息：\n${frameRecord.content}\n返回状态：${BevTreeExecuteStatus[frameRecord.state]}\n----------------\n`
+        let content = "无数据"
+        if (frameRecordInfo) {
+            content = ""
+            for (let i = 0; i < frameRecordInfo.length; ++i) {
+                let frameRecord = frameRecordInfo[i]
+                content += `全局 tick 序号：${frameRecord.counter}\n详细信息：\n${frameRecord.content}\n返回状态：${BevTreeExecuteStatus[frameRecord.state]}\n----------------\n`
+            }
         }
         this.setState({
             message: content

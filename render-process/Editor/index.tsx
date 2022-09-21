@@ -323,6 +323,9 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         this.setState({ curNodeId });
         if (this.state.curNodeId) {
             graph.setItemState(this.state.curNodeId, "selected", true);
+            if (this.nodePanelRef.current) {
+                this.nodePanelRef.current.refreshDebugInfo()
+            }
             // let model = graph.findById(this.state.curNodeId).getModel()
             // console.log(`this.state.curNodeId : (${model.x},${model.y})`)
         }
@@ -367,6 +370,7 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
         const rootData = this.graph.findDataById("1");
         const parentData = Utils.findParent(rootData, curNodeId);
         parentData.children = parentData.children.filter((e) => e.id != curNodeId);
+        this.reorderNodeId()
         this.changeWithoutAnim();
     }
 
@@ -577,6 +581,10 @@ export default class Editor extends React.Component<EditorProps, EditorState> {
     }
 
     parseDebugInfo(frameDebugInfo: AIRecordInfo[]) {
+        if (frameDebugInfo == null) {
+            console.error(`client send null frameDebugInfo??`)
+            return;
+        }
         let nodes = this.graph.getNodes()
         // const allStates: any[] = [];
         // Object.values(BevTreeExecuteStatus).forEach(item => {
